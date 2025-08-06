@@ -2,14 +2,18 @@ import streamlit as st
 import replicate
 import os
 import requests
-from dotenv import load_dotenv
 from PIL import Image
 from io import BytesIO
 
-# Load environment variables
-load_dotenv()
-replicate_token = os.getenv("REPLICATE_API_TOKEN")
-os.environ["REPLICATE_API_TOKEN"] = replicate_token
+# Safely get the token from Streamlit secrets
+replicate_token = st.secrets.get("REPLICATE_API_TOKEN")
+
+if not replicate_token:
+    st.error("Replicate API token is missing. Please set REPLICATE_API_TOKEN in your Streamlit secrets.")
+    st.stop()
+
+# Set up the Replicate client
+replicate.Client(api_token=replicate_token)
 
 # Streamlit config
 st.set_page_config(page_title="Image Generator", layout="centered")
@@ -41,7 +45,7 @@ if st.button("Generate") and prompt:
 
                 # Add download button
                 st.download_button(
-                    label="📥 Download Image",
+                    label="Download Image",
                     data=img_byte_arr,
                     file_name="generated_image.png",
                     mime="image/png"
