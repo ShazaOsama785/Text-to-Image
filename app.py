@@ -1,0 +1,53 @@
+import streamlit as st
+import replicate
+import os
+import requests
+from dotenv import load_dotenv
+from PIL import Image
+from io import BytesIO
+
+# Load environment variables
+load_dotenv()
+replicate_token = os.getenv("REPLICATE_API_TOKEN")
+os.environ["REPLICATE_API_TOKEN"] = replicate_token
+
+# Streamlit config
+st.set_page_config(page_title="Image Generator", layout="centered")
+st.title("Text-to-Image Generator")
+
+# UI input
+prompt = st.text_input("Enter your prompt")
+
+if st.button("Generate") and prompt:
+    with st.spinner("Generating..."):
+        try:
+            output = replicate.run(
+                "stability-ai/stable-diffusion:ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4",
+                input={"prompt": prompt}
+            )
+
+            # Get the image URL from the output
+            image_url = output[0]
+            response = requests.get(image_url)
+
+            if response.status_code == 200:
+                image = Image.open(BytesIO(response.content))
+                st.image(image, caption="Here’s your image!")
+
+                # Convert image to byte stream for download
+                img_byte_arr = BytesIO()
+                image.save(img_byte_arr, format="PNG")
+                img_byte_arr.seek(0)
+
+                # Add download button
+                st.download_button(
+                    label="📥 Download Image",
+                    data=img_byte_arr,
+                    file_name="generated_image.png",
+                    mime="image/png"
+                )
+            else:
+                st.error("Failed to fetch the image.")
+
+        except replicate.exceptions.ReplicateError as e:
+            st.error(f"Replicate error: {e}")
